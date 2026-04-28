@@ -18,7 +18,7 @@ stages:
           - apt-get update && apt-get install -y chromium-browser
           - pip3 install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
           - pip3 install requests==2.31.0 playwright==1.42.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
-          - python3 ./main.py
+          - PLAYWRIGHT_BROWSERS_PATH=0 python3 ./main.py
       - step: publish@general_artifacts
         name: publish_general_artifacts
         displayName: 上传制品
