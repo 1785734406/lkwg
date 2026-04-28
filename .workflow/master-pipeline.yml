@@ -12,9 +12,9 @@ triggers:
 variables:
   DINGTALK_WEBHOOK: https://oapi.dingtalk.com/robot/send?access_token=c55ebdfe122fb8eec6520a3cae5572f072ff6311fae92c2fe1c0d363f4a2d42a
   DINGTALK_SECRET: SECe7cd9a6a7e89a794649d79e199d4b2ddfd133168706013902bea95c79f936765
-  GITEE_REPO_OWNER: zcszcszcs1
-  GITEE_REPO_NAME: lkwg
-  GITEE_ACCESS_TOKEN: c30374e614d04009eee37d80af99960d
+  REPO_OWNER: zcszcszcs1
+  REPO_NAME: lkwg
+  ACCESS_TOKEN: c30374e614d04009eee37d80af99960d
 stages:
   - name: compile
     displayName: 编译
@@ -35,9 +35,9 @@ stages:
         commands:
           - export DINGTALK_WEBHOOK="${DINGTALK_WEBHOOK}"
           - export DINGTALK_SECRET="${DINGTALK_SECRET}"
-          - export GITEE_REPO_OWNER="${GITEE_REPO_OWNER}"
-          - export GITEE_REPO_NAME="${GITEE_REPO_NAME}"
-          - export GITEE_ACCESS_TOKEN="${GITEE_ACCESS_TOKEN}"
+          - export GITEE_REPO_OWNER="${REPO_OWNER}"
+          - export GITEE_REPO_NAME="${REPO_NAME}"
+          - export GITEE_ACCESS_TOKEN="${ACCESS_TOKEN}"
           - python3 -m pip install --upgrade pip
           - pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
           - pip3 install -r requirements.txt
