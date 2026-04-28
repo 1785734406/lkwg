@@ -48,3 +48,5 @@ triggers:
     branches:
       include:
         - master
+  schedule:
+    cron: '55 9 * * *'
