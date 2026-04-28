@@ -1,14 +1,3 @@
-# ==============================================
-# Gitee CI 流水线配置文件 - 最终版
-# ==============================================
-# 触发时间（北京时间）：
-#   - 每天 08:00
-#   - 每天 12:00
-#   - 每天 16:00
-#   - 每天 20:00
-# 注意：Gitee CI 使用 UTC 时区，表达式中为 0,4,8,12 点（对应北京 8,12,16,20 点）
-# ==============================================
-
 version: '1.0'
 name: master-pipeline
 displayName: MasterPipeline
@@ -43,3 +32,6 @@ stages:
           - pip3 install -r requirements.txt
           - python3 -m playwright install chromium --with-deps
           - python3 ./main.py
+        caches:
+          - ~/.cache/pip
+          - /root/.cache/ms-playwright
