@@ -4,7 +4,7 @@ displayName: MasterPipeline
 triggers:
   trigger: auto
   schedule:
-    - cron: '* 20 0,4,5,8,12 * * ? *'
+    - cron: '* 40 * * * ? *'
 variables:
   DINGTALK_WEBHOOK: https://oapi.dingtalk.com/robot/send?access_token=c55ebdfe122fb8eec6520a3cae5572f072ff6311fae92c2fe1c0d363f4a2d42a
   DINGTALK_SECRET: SECe7cd9a6a7e89a794649d79e199d4b2ddfd133168706013902bea95c79f936765
