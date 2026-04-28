@@ -15,10 +15,10 @@ stages:
             path:
               - ./
         commands:
-          - python3 -m pip install --upgrade pip
+          - pip3 install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
           - pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-          - pip3 install -r requirements.txt
-          - python3 -m playwright install chromium --with-deps
+          - pip3 install requests==2.31.0 playwright==1.42.0 -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
+          - PLAYWRIGHT_DOWNLOAD_HOST=https://npm.taobao.org/mirrors/playwright python3 -m playwright install chromium
           - python3 ./main.py
       - step: publish@general_artifacts
         name: publish_general_artifacts
