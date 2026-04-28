@@ -35,3 +35,8 @@ stages:
         caches:
           - ~/.cache/pip
           - /root/.cache/ms-playwright
+        strategy:
+          resource:
+            cpu: 1
+            memory: 2
+          retry: '1'
