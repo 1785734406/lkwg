@@ -49,4 +49,4 @@ triggers:
       include:
         - master
   schedule:
-    cron: '55 9 * * *'
+    cron: '55 1 * * *'  # UTC时间 1:55 = 北京时间 9:55
