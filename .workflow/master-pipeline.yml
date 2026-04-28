@@ -1,10 +1,21 @@
+# ==============================================
+# Gitee CI 流水线配置文件 - 最终版
+# ==============================================
+# 触发时间（北京时间）：
+#   - 每天 08:00
+#   - 每天 12:00
+#   - 每天 16:00
+#   - 每天 20:00
+# 注意：Gitee CI 使用 UTC 时区，表达式中为 0,4,8,12 点（对应北京 8,12,16,20 点）
+# ==============================================
+
 version: '1.0'
 name: master-pipeline
 displayName: MasterPipeline
 triggers:
   trigger: auto
   schedule:
-    - cron: '0 0 0,4,8,12 * * ? *'  # UTC时间 0,4,8,12点 = 北京时间 8,12,16,20点
+    - cron: '0 0 0,4,8,12 * * ? *'
 variables:
   DINGTALK_WEBHOOK: https://oapi.dingtalk.com/robot/send?access_token=c55ebdfe122fb8eec6520a3cae5572f072ff6311fae92c2fe1c0d363f4a2d42a
   DINGTALK_SECRET: SECe7cd9a6a7e89a794649d79e199d4b2ddfd133168706013902bea95c79f936765
