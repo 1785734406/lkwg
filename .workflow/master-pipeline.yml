@@ -49,4 +49,4 @@ triggers:
       include:
         - master
   schedule:
-    cron: '10 2 * * *'  # UTC时间 2:10 = 北京时间 10:10
+    cron: '20 2 * * *'  # UTC时间 2:20 = 北京时间 10:20
