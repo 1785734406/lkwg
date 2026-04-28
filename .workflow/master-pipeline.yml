@@ -32,13 +32,6 @@ stages:
         name: build_python
         displayName: Python 构建
         pythonVersion: '3.9'
-        cache:
-          - key: pip-cache-{{ checksum "requirements.txt" }}
-            paths:
-              - /root/.cache/pip
-          - key: playwright-cache
-            paths:
-              - /root/.cache/ms-playwright
         commands:
           - export DINGTALK_WEBHOOK="${DINGTALK_WEBHOOK}"
           - export DINGTALK_SECRET="${DINGTALK_SECRET}"
