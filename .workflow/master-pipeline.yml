@@ -1,6 +1,10 @@
 version: '1.0'
 name: master-pipeline
 displayName: MasterPipeline
+cache:
+  paths:
+    - ~/.cache/pip
+    - ~/.local/lib/python3.9/site-packages
 stages:
   - stage: 
     name: compile
@@ -15,9 +19,8 @@ stages:
             path:
               - ./
         commands:
-          - apt-get update && apt-get install -y chromium-browser
-          - pip3 install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
-          - pip3 install requests==2.31.0 playwright==1.42.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
+          - if [ ! -f /usr/bin/chromium-browser ]; then apt-get update && apt-get install -y chromium-browser; fi
+          - pip3 install requests==2.31.0 playwright==1.42.0 -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir
           - PLAYWRIGHT_BROWSERS_PATH=0 python3 ./main.py
       - step: publish@general_artifacts
         name: publish_general_artifacts
