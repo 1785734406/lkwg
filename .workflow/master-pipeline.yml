@@ -8,7 +8,13 @@ triggers:
       include:
         - master
   schedule:
-    - cron: '0 0,4,8,12 * * * ? *'  # UTC时间 0,4,8,12点 = 北京时间 8,12,16,20点
+    - cron: '* 0,4,8,12 * * * ? *'
+variables:
+  DINGTALK_WEBHOOK: https://oapi.dingtalk.com/robot/send?access_token=c55ebdfe122fb8eec6520a3cae5572f072ff6311fae92c2fe1c0d363f4a2d42a
+  DINGTALK_SECRET: SECe7cd9a6a7e89a794649d79e199d4b2ddfd133168706013902bea95c79f936765
+  GITEE_REPO_OWNER: zcszcszcs1
+  GITEE_REPO_NAME: lkwg
+  GITEE_ACCESS_TOKEN: c30374e614d04009eee37d80af99960d
 stages:
   - name: compile
     displayName: 编译
@@ -26,12 +32,6 @@ stages:
           - key: playwright-cache
             paths:
               - /root/.cache/ms-playwright
-        env:
-          - DINGTALK_WEBHOOK=https://oapi.dingtalk.com/robot/send?access_token=c55ebdfe122fb8eec6520a3cae5572f072ff6311fae92c2fe1c0d363f4a2d42a
-          - DINGTALK_SECRET=SECe7cd9a6a7e89a794649d79e199d4b2ddfd133168706013902bea95c79f936765
-          - GITEE_REPO_OWNER=zcszcszcs1
-          - GITEE_REPO_NAME=lkwg
-          - GITEE_ACCESS_TOKEN=c30374e614d04009eee37d80af99960d
         commands:
           - python3 -m pip install --upgrade pip
           - pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
