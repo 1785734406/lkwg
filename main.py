@@ -12,3 +12,4 @@ if __name__ == "__main__":
         yxsr.send_image_to_dingtalk(result)
     else:
         print("截图失败")
+        
