@@ -1,6 +1,9 @@
 # 排除包含密钥的原始脚本
 yxsr.py
 
+# 排除压缩包（不推送）
+yxsr.zip
+
 # Python 编译文件
 __pycache__/
 *.pyc
