@@ -2,9 +2,8 @@ name: Merchant Screenshot
 
 on:
   schedule:
-    # 北京时间 7、8、11、12、15、16、19、20点
-    - cron: '0 7,8,11,12,15,16,19,20 * * *'
-      timezone: Asia/Shanghai
+    # 北京时间 7、8、11、12、15、16、19、20点 (UTC 23,0,3,4,7,8,11,12)
+    - cron: '0 23,0,3,4,7,8,11,12 * * *'
   workflow_dispatch:
 
 concurrency:
