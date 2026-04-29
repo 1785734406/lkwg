@@ -3,12 +3,25 @@ name: Merchant Screenshot
 on:
   schedule:
     # 北京时间 8:00, 12:00, 16:00, 20:00 (UTC 0,4,8,12)
-    - cron: '0 0,4,8,12 * * *'
+    # 添加额外时间点增加触发机会，减少延迟影响
+    - cron: '0 0 * * *'      # UTC 0:00 = 北京时间 8:00
+    - cron: '15 0 * * *'     # UTC 0:15 = 北京时间 8:15（备用）
+    - cron: '0 4 * * *'      # UTC 4:00 = 北京时间 12:00
+    - cron: '15 4 * * *'     # UTC 4:15 = 北京时间 12:15（备用）
+    - cron: '0 8 * * *'      # UTC 8:00 = 北京时间 16:00
+    - cron: '15 8 * * *'     # UTC 8:15 = 北京时间 16:15（备用）
+    - cron: '0 12 * * *'     # UTC 12:00 = 北京时间 20:00
+    - cron: '15 12 * * *'    # UTC 12:15 = 北京时间 20:15（备用）
   workflow_dispatch:
+
+concurrency:
+  group: screenshot-workflow
+  cancel-in-progress: true
 
 jobs:
   capture:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -19,7 +32,6 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 缓存 pip 包
       - name: Cache pip packages
         uses: actions/cache@v4
         with:
@@ -28,7 +40,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      # 缓存 Playwright 浏览器二进制文件（约300MB）
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
@@ -46,15 +57,6 @@ jobs:
           playwright install chromium
           playwright install-deps chromium
 
-      - name: Debug - Check environment variables
-        run: |
-          echo "DINGTALK_WEBHOOK set: ${{ secrets.DINGTALK_WEBHOOK != '' }}"
-          echo "DINGTALK_SECRET set: ${{ secrets.DINGTALK_SECRET != '' }}"
-          echo "GITEE_OWNER set: ${{ secrets.GITEE_OWNER != '' }}"
-          echo "GITEE_REPO set: ${{ secrets.GITEE_REPO != '' }}"
-          echo "GITEE_TOKEN set: ${{ secrets.GITEE_TOKEN != '' }}"
-          echo "LKWG_URL set: ${{ secrets.LKWG_URL != '' }}"
-
       - name: Run screenshot script
         env:
           DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
@@ -65,4 +67,3 @@ jobs:
           LKWG_URL: ${{ secrets.LKWG_URL }}
         run: |
           python yxsr_ci.py
-        continue-on-error: false
