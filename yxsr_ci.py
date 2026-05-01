@@ -22,63 +22,38 @@ def screenshot_merchant_hd(output_path=None):
     """
     if output_path is None:
         output_path = os.path.join(SCRIPT_DIR, "merchant_hd.png")
-    
-    max_retries = 3  # 最大重试次数
-    retry_delay = 5  # 重试间隔（秒）
-    
-    for attempt in range(max_retries):
-        try:
-            url = os.getenv('LKWG_URL', "https://www.onebiji.com/hykb_tools/comm/lkwgmerchant/preview.php?id=1&immgj=0&imm=1")
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
-                context = browser.new_context(
-                    viewport={"width": 750, "height": 2000},
-                    device_scale_factor=1,
-                    user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
-                    locale="zh-CN",
-                    timezone_id="Asia/Shanghai"
-                )
-                page = context.new_page()
-                
-                print(f"尝试第 {attempt + 1}/{max_retries} 次加载页面...")
-                # 移除超时限制，让页面有足够时间加载
-                page.goto(url, timeout=0)
-                
-                # 增加等待选择器的超时时间
-                page.wait_for_selector(".shop-box", timeout=30000)
-                page.wait_for_selector(".shop-list", timeout=20000)
-                page.wait_for_selector(".shop-list li", timeout=20000, state="attached")
+    try:
+        url = os.getenv('LKWG_URL', "https://www.onebiji.com/hykb_tools/comm/lkwgmerchant/preview.php?id=1&immgj=0&imm=1")
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
+            context = browser.new_context(
+                viewport={"width": 750, "height": 2000},
+                device_scale_factor=1,
+                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
+                locale="zh-CN",
+                timezone_id="Asia/Shanghai"
+            )
+            page = context.new_page()
+            page.goto(url, timeout=150000)
+            page.wait_for_selector(".shop-box", timeout=100000)
+            page.wait_for_selector(".shop-list", timeout=80000)
+            page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
 
-                # 隐藏底部工具栏
-                try:
-                    page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
-                    page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
-                except Exception:
-                    pass
-                
-                time.sleep(10)
-                content = page.locator(".content")
-                content.screenshot(path=output_path, type="png")
-                browser.close()
-                print(f"高清截图已保存至: {output_path}")
-                return output_path
-                
-        except PlaywrightTimeoutError as e:
-            print(f"第 {attempt + 1} 次尝试失败: 超时 - {e}")
-            if attempt < max_retries - 1:
-                print(f"等待 {retry_delay} 秒后重试...")
-                time.sleep(retry_delay)
-            else:
-                print("已达到最大重试次数，截图失败")
-                return None
-        except Exception as e:
-            print(f"第 {attempt + 1} 次尝试失败: {e}")
-            if attempt < max_retries - 1:
-                print(f"等待 {retry_delay} 秒后重试...")
-                time.sleep(retry_delay)
-            else:
-                print("已达到最大重试次数，截图失败")
-                return None
+            # 隐藏底部工具栏
+            try:
+                page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
+            except Exception:
+                pass
+            time.sleep(10)
+            content = page.locator(".content")
+            content.screenshot(path=output_path, type="png")
+            browser.close()
+            print(f"高清截图已保存至: {output_path}")
+            return output_path
+    except (PlaywrightTimeoutError, Exception) as e:
+        print(f"截图失败: {e}")
+        return None
 
 
 def delete_all_gitee_images(repo_owner, repo_name, access_token, branch="master", folder="images"):
@@ -123,98 +98,83 @@ def upload_to_gitee(image_path, repo_owner, repo_name, access_token, branch="mas
                 data["sha"] = file_info["sha"]
                 print(f"文件已存在，使用 SHA: {file_info['sha']}")
 
-        resp = requests.put(api_url, json=data)
-        if resp.status_code in [200, 201]:
-            result = resp.json()
+        resp = requests.put(api_url, json=data) if "sha" in data else requests.post(api_url, json=data)
+        resp.raise_for_status()
+        result = resp.json()
+
+        download_url = result.get("content", {}).get("download_url") or result.get("download_url") or result.get("html_url")
+        if not download_url:
             download_url = f"https://gitee.com/{repo_owner}/{repo_name}/raw/{branch}/{filepath}"
-            print(f"图片上传成功: {download_url}")
-            return download_url
-        else:
-            print(f"图片上传失败: {resp.status_code} - {resp.text}")
-            return None
+        print(f"上传成功: {download_url}")
+        return download_url
     except Exception as e:
-        print(f"上传 Gitee 图片时出错: {e}")
+        print(f"上传失败: {e}")
         return None
 
 
-def send_image_to_dingtalk(webhook_url, secret, image_url, message="今日远行商人商品信息"):
-    """发送图片到钉钉群"""
+def send_image_to_dingtalk(image_path):
+    """发送图片到钉钉，成功后删除 Gitee 上所有相关图片及本地截图"""
     try:
-        timestamp = str(round(time.time() * 1000))
-        secret_enc = secret.encode('utf-8')
-        string_to_sign = f"{timestamp}\n{secret}"
-        string_to_sign_enc = string_to_sign.encode('utf-8')
-        hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
-        sign = urllib.parse.quote(base64.b64encode(hmac_code))
+        # 从环境变量获取配置
+        webhook = os.getenv('DINGTALK_WEBHOOK')
+        secret = os.getenv('DINGTALK_SECRET')
+        repo_owner = os.getenv('GITEE_OWNER')
+        repo_name = os.getenv('GITEE_REPO')
+        access_token = os.getenv('GITEE_TOKEN')
 
-        url = f"{webhook_url}&timestamp={timestamp}&sign={sign}"
-        headers = {"Content-Type": "application/json"}
-        data = {
-            "msgtype": "link",
-            "link": {
-                "text": message,
-                "title": "远行商人",
-                "picUrl": image_url,
-                "messageUrl": image_url
-            }
-        }
-
-        resp = requests.post(url, headers=headers, json=data)
-        if resp.status_code == 200:
-            result = resp.json()
-            if result.get("errcode") == 0:
-                print("钉钉消息发送成功")
-                return True
-            else:
-                print(f"钉钉消息发送失败: {result.get('errmsg')}")
-                return False
-        else:
-            print(f"钉钉消息发送失败: {resp.status_code}")
+        # 检查环境变量是否设置
+        if not all([webhook, secret, repo_owner, repo_name, access_token]):
+            print("错误：缺少必要的环境变量配置")
+            print("请设置以下环境变量：")
+            print("- DINGTALK_WEBHOOK: 钉钉机器人 Webhook")
+            print("- DINGTALK_SECRET: 钉钉机器人 Secret")
+            print("- GITEE_OWNER: Gitee 仓库所有者")
+            print("- GITEE_REPO: Gitee 仓库名")
+            print("- GITEE_TOKEN: Gitee 访问令牌")
             return False
+
+        image_url = upload_to_gitee(image_path, repo_owner, repo_name, access_token)
+        if not image_url:
+            print("上传图片失败，无法发送")
+            return False
+
+        timestamp = str(int(time.time() * 1000))
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac.new(secret.encode('utf-8'), f"{timestamp}\n{secret}".encode('utf-8'), hashlib.sha256).digest()))
+        webhook_url = f"{webhook}&timestamp={timestamp}&sign={sign}"
+
+        data = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": "远行商人商品列表",
+                "text": f"远行商人商品列表定时推送中，当前商品信息：\n ![远行商人商品列表]({image_url})"
+            },
+            "at": {"isAtAll": False}
+        }
+        resp = requests.post(webhook_url, json=data, headers={"Content-Type": "application/json"})
+        resp.raise_for_status()
+        result = resp.json()
+        if result.get("errcode") == 0:
+            print("钉钉发送成功")
+        else:
+            print(f"钉钉发送失败: {result.get('errmsg')}")
+
+        # 删除所有 Gitee 图片及本地截图
+        delete_all_gitee_images(repo_owner, repo_name, access_token, "master", "images")
+        if os.path.exists(image_path):
+            os.remove(image_path)
+            print(f"已删除本地截图: {image_path}")
+
+        return result.get("errcode") == 0
     except Exception as e:
-        print(f"发送钉钉消息时出错: {e}")
+        print(f"发送过程出错: {e}")
+        if os.path.exists(image_path):
+            os.remove(image_path)
         return False
 
 
-def main():
-    print("=== 开始执行截图任务 ===")
-    
-    # 获取环境变量
-    dingtalk_webhook = os.getenv('DINGTALK_WEBHOOK')
-    dingtalk_secret = os.getenv('DINGTALK_SECRET')
-    gitee_owner = os.getenv('GITEE_OWNER')
-    gitee_repo = os.getenv('GITEE_REPO')
-    gitee_token = os.getenv('GITEE_TOKEN')
-    
-    # 打印环境变量状态
-    print(f"DINGTALK_WEBHOOK set: {bool(dingtalk_webhook)}")
-    print(f"DINGTALK_SECRET set: {bool(dingtalk_secret)}")
-    print(f"GITEE_OWNER set: {bool(gitee_owner)}")
-    print(f"GITEE_REPO set: {bool(gitee_repo)}")
-    print(f"GITEE_TOKEN set: {bool(gitee_token)}")
-
-    # 截图
-    image_path = screenshot_merchant_hd()
-    if not image_path:
-        print("截图失败，流程终止")
-        return
-
-    # 上传到 Gitee
-    if gitee_owner and gitee_repo and gitee_token:
-        delete_all_gitee_images(gitee_owner, gitee_repo, gitee_token)
-        image_url = upload_to_gitee(image_path, gitee_owner, gitee_repo, gitee_token)
-        
-        if image_url and dingtalk_webhook and dingtalk_secret:
-            send_image_to_dingtalk(dingtalk_webhook, dingtalk_secret, image_url)
-        elif not image_url:
-            print("图片上传失败，跳过钉钉通知")
-        else:
-            print("钉钉配置不完整，跳过钉钉通知")
-    else:
-        print("Gitee 配置不完整，跳过图片上传")
-    
-    print("=== 截图任务执行完成 ===")
-
-
 if __name__ == "__main__":
-    main()
+    img = screenshot_merchant_hd()
+    if img:
+        send_image_to_dingtalk(img)
+    else:
+        print("截图失败，流程终止")
