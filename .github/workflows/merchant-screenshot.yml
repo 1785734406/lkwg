@@ -35,6 +35,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-playwright-
 
+      - name: Install Chinese fonts
+        run: |
+          sudo apt-get update || true
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra || true
+          fc-cache -f -v || true
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
