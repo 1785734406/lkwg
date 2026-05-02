@@ -11,14 +11,13 @@ import hashlib
 import urllib.parse
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-# 获取脚本所在目录（绝对路径）
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def screenshot_merchant_hd(output_path=None):
     """
-    高清截图远行商人页面（只包含商品列表和时间选择，不包含底部工具栏）
-    默认将截图保存在脚本所在目录下的 merchant_hd.png
+    高清截图远行商人页面
+    返回截图路径和是否有强烈推荐物品
     """
     if output_path is None:
         output_path = os.path.join(SCRIPT_DIR, "merchant_hd.png")
@@ -39,7 +38,9 @@ def screenshot_merchant_hd(output_path=None):
             page.wait_for_selector(".shop-list", timeout=80000)
             page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
 
-            # 隐藏底部工具栏和顶部 sw-box 工具栏
+            has_recommend = page.locator(".tp2").count() > 0
+            print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
+
             try:
                 page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
@@ -51,10 +52,10 @@ def screenshot_merchant_hd(output_path=None):
             content.screenshot(path=output_path, type="png")
             browser.close()
             print(f"高清截图已保存至: {output_path}")
-            return output_path
+            return output_path, has_recommend
     except (PlaywrightTimeoutError, Exception) as e:
         print(f"截图失败: {e}")
-        return None
+        return None, False
 
 
 def delete_all_gitee_images(repo_owner, repo_name, access_token, branch="master", folder="images"):
@@ -113,30 +114,14 @@ def upload_to_gitee(image_path, repo_owner, repo_name, access_token, branch="mas
         return None
 
 
-def send_image_to_dingtalk(image_path):
-    """发送图片到钉钉，成功后删除 Gitee 上所有相关图片及本地截图"""
+def send_image_to_dingtalk(image_url):
+    """发送图片链接到第一个钉钉群（全物品群）"""
     try:
-        # 从环境变量获取配置
         webhook = os.getenv('DINGTALK_WEBHOOK')
         secret = os.getenv('DINGTALK_SECRET')
-        repo_owner = os.getenv('GITEE_OWNER')
-        repo_name = os.getenv('GITEE_REPO')
-        access_token = os.getenv('GITEE_TOKEN')
 
-        # 检查环境变量是否设置
-        if not all([webhook, secret, repo_owner, repo_name, access_token]):
-            print("错误：缺少必要的环境变量配置")
-            print("请设置以下环境变量：")
-            print("- DINGTALK_WEBHOOK: 钉钉机器人 Webhook")
-            print("- DINGTALK_SECRET: 钉钉机器人 Secret")
-            print("- GITEE_OWNER: Gitee 仓库所有者")
-            print("- GITEE_REPO: Gitee 仓库名")
-            print("- GITEE_TOKEN: Gitee 访问令牌")
-            return False
-
-        image_url = upload_to_gitee(image_path, repo_owner, repo_name, access_token)
-        if not image_url:
-            print("上传图片失败，无法发送")
+        if not webhook or not secret:
+            print("错误：缺少 DINGTALK_WEBHOOK 或 DINGTALK_SECRET 环境变量")
             return False
 
         timestamp = str(int(time.time() * 1000))
@@ -155,27 +140,74 @@ def send_image_to_dingtalk(image_path):
         resp.raise_for_status()
         result = resp.json()
         if result.get("errcode") == 0:
-            print("钉钉发送成功")
+            print("全物品群通知发送成功")
+            return True
         else:
-            print(f"钉钉发送失败: {result.get('errmsg')}")
-
-        # 删除所有 Gitee 图片及本地截图
-        delete_all_gitee_images(repo_owner, repo_name, access_token, "master", "images")
-        if os.path.exists(image_path):
-            os.remove(image_path)
-            print(f"已删除本地截图: {image_path}")
-
-        return result.get("errcode") == 0
+            print(f"全物品群通知发送失败: {result.get('errmsg')}")
+            return False
     except Exception as e:
         print(f"发送过程出错: {e}")
-        if os.path.exists(image_path):
-            os.remove(image_path)
+        return False
+
+
+def send_recommend_to_dingtalk(image_url):
+    """向第二个钉钉群发送强烈推荐物品通知（推荐群）"""
+    try:
+        webhook = os.getenv('DINGTALK2_WEBHOOK')
+        secret = os.getenv('DINGTALK2_SECRET')
+
+        if not webhook or not secret:
+            print("错误：缺少 DINGTALK2_WEBHOOK 或 DINGTALK2_SECRET 环境变量")
+            return False
+
+        timestamp = str(int(time.time() * 1000))
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac.new(secret.encode('utf-8'), f"{timestamp}\n{secret}".encode('utf-8'), hashlib.sha256).digest()))
+        webhook_url = f"{webhook}&timestamp={timestamp}&sign={sign}"
+
+        data = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": "远行商人强烈推荐",
+                "text": f"⚠️ 发现强烈推荐购买物品！\n ![远行商人商品列表]({image_url})"
+            },
+            "at": {"isAtAll": False}
+        }
+        resp = requests.post(webhook_url, json=data, headers={"Content-Type": "application/json"})
+        resp.raise_for_status()
+        result = resp.json()
+        if result.get("errcode") == 0:
+            print("推荐群通知发送成功")
+            return True
+        else:
+            print(f"推荐群通知发送失败: {result.get('errmsg')}")
+            return False
+    except Exception as e:
+        print(f"发送强烈推荐通知出错: {e}")
         return False
 
 
 if __name__ == "__main__":
-    img = screenshot_merchant_hd()
+    img, has_recommend = screenshot_merchant_hd()
     if img:
-        send_image_to_dingtalk(img)
+        repo_owner = os.getenv('GITEE_OWNER')
+        repo_name = os.getenv('GITEE_REPO')
+        access_token = os.getenv('GITEE_TOKEN')
+
+        if not all([repo_owner, repo_name, access_token]):
+            print("错误：缺少必要的 Gitee 环境变量")
+            exit(1)
+
+        image_url = upload_to_gitee(img, repo_owner, repo_name, access_token)
+        if image_url:
+            if has_recommend:
+                send_recommend_to_dingtalk(image_url)
+            else:
+                print("无强烈推荐物品，跳过推荐群通知")
+            send_image_to_dingtalk(image_url)
+        if os.path.exists(img):
+            os.remove(img)
+            print(f"已删除本地截图: {img}")
+        if image_url:
+            delete_all_gitee_images(repo_owner, repo_name, access_token)
     else:
         print("截图失败，流程终止")
