@@ -39,16 +39,18 @@ jobs:
         uses: actions/cache@v4
         id: cache-fonts
         with:
-          path: |
-            /usr/share/fonts
-            /usr/local/share/fonts
+          path: ~/.local/share/fonts
           key: ${{ runner.os }}-fonts-noto-cjk
 
       - name: Install Chinese fonts
         if: steps.cache-fonts.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get update || true
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra || true
+          mkdir -p ~/.local/share/fonts
+          cd ~/.local/share/fonts
+          # 下载 Noto CJK 中文字体（使用 GitHub 镜像）
+          wget -q https://github.com/googlefonts/noto-cjk/releases/download/Sans2.004/NotoSansCJK-Regular.ttc || true
+          wget -q https://github.com/googlefonts/noto-cjk/releases/download/Sans2.004/NotoSansCJK-Bold.ttc || true
+          # 刷新字体缓存
           fc-cache -f -v || true
 
       - name: Install dependencies
