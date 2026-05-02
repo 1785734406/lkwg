@@ -35,22 +35,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-playwright-
 
-      - name: Cache Chinese fonts
-        uses: actions/cache@v4
-        id: cache-fonts
-        with:
-          path: ~/.local/share/fonts
-          key: ${{ runner.os }}-fonts-noto-cjk
-
       - name: Install Chinese fonts
-        if: steps.cache-fonts.outputs.cache-hit != 'true'
         run: |
-          mkdir -p ~/.local/share/fonts
-          cd ~/.local/share/fonts
-          # 下载 Noto CJK 中文字体（使用 GitHub 镜像）
-          wget -q https://github.com/googlefonts/noto-cjk/releases/download/Sans2.004/NotoSansCJK-Regular.ttc || true
-          wget -q https://github.com/googlefonts/noto-cjk/releases/download/Sans2.004/NotoSansCJK-Bold.ttc || true
-          # 刷新字体缓存
+          # 安装中文字体（重试3次）
+          for i in 1 2 3; do
+            if sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-wqy-zenhei; then
+              break
+            fi
+            echo "安装失败，等待10秒后重试..."
+            sleep 10
+          done
+          # 创建字体配置文件，确保系统能正确识别中文字体
+          mkdir -p ~/.config/fontconfig/conf.d
+          echo '<?xml version="1.0"?>
+          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+          <fontconfig>
+            <match target="pattern">
+              <test name="family"><string>Microsoft YaHei</string></test>
+              <edit name="family" mode="assign"><string>Noto Sans CJK SC</string></edit>
+            </match>
+            <match target="pattern">
+              <test name="family"><string>SimSun</string></test>
+              <edit name="family" mode="assign"><string>Noto Sans CJK SC</string></edit>
+            </match>
+            <match target="pattern">
+              <test name="family"><string>STHeiti</string></test>
+              <edit name="family" mode="assign"><string>Noto Sans CJK SC</string></edit>
+            </match>
+            <match target="pattern">
+              <test name="family"><string>PingFang SC</string></test>
+              <edit name="family" mode="assign"><string>Noto Sans CJK SC</string></edit>
+            </match>
+          </fontconfig>' > ~/.config/fontconfig/conf.d/99-chinese-fonts.conf
           fc-cache -f -v || true
 
       - name: Install dependencies
