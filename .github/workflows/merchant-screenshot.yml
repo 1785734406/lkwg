@@ -53,6 +53,8 @@ jobs:
         env:
           DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
           DINGTALK_SECRET: ${{ secrets.DINGTALK_SECRET }}
+          DINGTALK2_WEBHOOK: ${{ secrets.DINGTALK2_WEBHOOK }}
+          DINGTALK2_SECRET: ${{ secrets.DINGTALK2_SECRET }}
           GITEE_OWNER: ${{ secrets.GITEE_OWNER }}
           GITEE_REPO: ${{ secrets.GITEE_REPO }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
