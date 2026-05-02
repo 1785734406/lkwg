@@ -39,10 +39,11 @@ def screenshot_merchant_hd(output_path=None):
             page.wait_for_selector(".shop-list", timeout=80000)
             page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
 
-            # 隐藏底部工具栏
+            # 隐藏底部工具栏和顶部 sw-box 工具栏
             try:
                 page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
             except Exception:
                 pass
             time.sleep(10)
