@@ -38,10 +38,9 @@ def screenshot_merchant_hd(output_path=None):
             page.wait_for_selector(".shop-list", timeout=80000)
             page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
 
-            # 检测商品列表是否为空（元素可见 或 包含提示文字）
-            has_empty_tip = page.locator(".show_none_tip").first.is_visible()
-            has_empty_text = "工具君正在加紧补充中" in page.content()
-            is_empty = has_empty_tip or has_empty_text
+            # 检测商品列表是否为空（.show_none_tip 元素可见即为空列表）
+            # 注意：不能检测文字内容，因为隐藏元素的文字也会出现在 page.content() 中
+            is_empty = page.locator(".show_none_tip").first.is_visible()
             
             # 如果商品列表为空，等待重试（最多等待10分钟，每30秒检查一次）
             retry_count = 0
@@ -51,9 +50,7 @@ def screenshot_merchant_hd(output_path=None):
                 time.sleep(30)
                 page.reload()
                 page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
-                has_empty_tip = page.locator(".show_none_tip").first.is_visible()
-                has_empty_text = "工具君正在加紧补充中" in page.content()
-                is_empty = has_empty_tip or has_empty_text
+                is_empty = page.locator(".show_none_tip").first.is_visible()
                 retry_count += 1
             
             if is_empty:
