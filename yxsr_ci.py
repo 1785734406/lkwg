@@ -38,6 +38,12 @@ def screenshot_merchant_hd(output_path=None):
             page.wait_for_selector(".shop-list", timeout=80000)
             page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
 
+            is_empty = page.locator(".show_none_tip").count() > 0
+            if is_empty:
+                print("商品列表为空，工具君正在加紧补充中")
+                browser.close()
+                return None, False
+
             has_recommend = page.locator(".tp2").count() > 0
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
