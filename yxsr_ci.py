@@ -40,17 +40,25 @@ def screenshot_merchant_hd(output_path=None):
 
             # 检测商品列表是否为空（.show_none_tip 元素可见即为空列表）
             # 注意：不能检测文字内容，因为隐藏元素的文字也会出现在 page.content() 中
-            is_empty = page.locator(".show_none_tip").first.is_visible()
+            has_empty_tip = page.locator(".show_none_tip").first.is_visible()
             
-            # 如果商品列表为空，等待重试（最多等待10分钟，每30秒检查一次）
+            # 检测是否有商品显示"已结束"状态（.time-un 元素存在表示有过期商品）
+            has_expired = page.locator(".time-un").count() > 0
+            
+            # 任一个条件满足都进入等待
+            is_empty = has_empty_tip or has_expired
+            
+            # 如果商品列表为空或有已结束商品，等待重试（最多等待10分钟，每30秒检查一次）
             retry_count = 0
             max_retries = 20  # 最多重试20次，每次30秒，总共10分钟
             while is_empty and retry_count < max_retries:
-                print(f"商品列表为空，等待重试 ({retry_count + 1}/{max_retries})")
+                print(f"商品列表为空或有已结束商品，等待重试 ({retry_count + 1}/{max_retries})")
                 time.sleep(30)
                 page.reload()
                 page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
-                is_empty = page.locator(".show_none_tip").first.is_visible()
+                has_empty_tip = page.locator(".show_none_tip").first.is_visible()
+                has_expired = page.locator(".time-un").count() > 0
+                is_empty = has_empty_tip or has_expired
                 retry_count += 1
             
             if is_empty:
