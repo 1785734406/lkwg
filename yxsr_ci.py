@@ -38,9 +38,26 @@ def screenshot_merchant_hd(output_path=None):
             page.wait_for_selector(".shop-list", timeout=80000)
             page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
 
-            is_empty = page.locator(".show_none_tip").count() > 0
+            # 检测商品列表是否为空（元素可见 或 包含提示文字）
+            has_empty_tip = page.locator(".show_none_tip").first.is_visible()
+            has_empty_text = "工具君正在加紧补充中" in page.content()
+            is_empty = has_empty_tip or has_empty_text
+            
+            # 如果商品列表为空，等待重试（最多等待10分钟，每30秒检查一次）
+            retry_count = 0
+            max_retries = 20  # 最多重试20次，每次30秒，总共10分钟
+            while is_empty and retry_count < max_retries:
+                print(f"商品列表为空，等待重试 ({retry_count + 1}/{max_retries})")
+                time.sleep(30)
+                page.reload()
+                page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
+                has_empty_tip = page.locator(".show_none_tip").first.is_visible()
+                has_empty_text = "工具君正在加紧补充中" in page.content()
+                is_empty = has_empty_tip or has_empty_text
+                retry_count += 1
+            
             if is_empty:
-                print("商品列表为空，工具君正在加紧补充中")
+                print("等待超时，商品列表仍为空")
                 browser.close()
                 return None, False
 
