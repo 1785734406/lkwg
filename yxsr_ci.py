@@ -39,7 +39,6 @@ def screenshot_merchant_hd(output_path=None):
             page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
 
             # 检测商品列表是否为空（.show_none_tip 元素可见即为空列表）
-            # 注意：不能检测文字内容，因为隐藏元素的文字也会出现在 page.content() 中
             has_empty_tip = page.locator(".show_none_tip").first.is_visible()
             
             # 检测是否有商品显示"已结束"状态（.time-un 元素存在表示有过期商品）
