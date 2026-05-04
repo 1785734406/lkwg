@@ -65,7 +65,15 @@ def screenshot_merchant_hd(output_path=None):
                 browser.close()
                 return None, False
 
-            has_recommend = page.locator(".tp2").count() > 0
+            # 检测是否有强烈推荐物品（只检测可见商品中的 tp2）
+            # 过滤掉 display:none 的隐藏商品
+            visible_tp2_count = page.evaluate("""
+                return [...document.querySelectorAll('.tp2')].filter(el => {
+                    const li = el.closest('li');
+                    return el.offsetParent !== null && li && li.offsetParent !== null;
+                }).length;
+            """)
+            has_recommend = visible_tp2_count > 0
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
             try:
