@@ -233,6 +233,9 @@ if __name__ == "__main__":
 
         image_url = upload_to_gitee(img, repo_owner, repo_name, access_token)
         if image_url:
+            # 发送钉钉前先删除之前的旧图片（不影响当前图片发送）
+            delete_all_gitee_images(repo_owner, repo_name, access_token)
+            
             if has_recommend:
                 send_recommend_to_dingtalk(image_url)
             else:
@@ -241,7 +244,5 @@ if __name__ == "__main__":
         if os.path.exists(img):
             os.remove(img)
             print(f"已删除本地截图: {img}")
-        if image_url:
-            delete_all_gitee_images(repo_owner, repo_name, access_token)
     else:
         print("截图失败，流程终止")
