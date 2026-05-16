@@ -221,26 +221,27 @@ def send_recommend_to_dingtalk(image_url):
 
 
 if __name__ == "__main__":
+    repo_owner = os.getenv('GITEE_OWNER')
+    repo_name = os.getenv('GITEE_REPO')
+    access_token = os.getenv('GITEE_TOKEN')
+
+    if not all([repo_owner, repo_name, access_token]):
+        print("错误：缺少必要的 Gitee 环境变量")
+        exit(1)
+
+    # 先删除之前的旧图片，避免影响当前图片
+    delete_all_gitee_images(repo_owner, repo_name, access_token)
+    
     img, has_recommend = screenshot_merchant_hd()
     if img:
-        repo_owner = os.getenv('GITEE_OWNER')
-        repo_name = os.getenv('GITEE_REPO')
-        access_token = os.getenv('GITEE_TOKEN')
-
-        if not all([repo_owner, repo_name, access_token]):
-            print("错误：缺少必要的 Gitee 环境变量")
-            exit(1)
-
         image_url = upload_to_gitee(img, repo_owner, repo_name, access_token)
         if image_url:
-            # 发送钉钉前先删除之前的旧图片（不影响当前图片发送）
-            delete_all_gitee_images(repo_owner, repo_name, access_token)
-            
             if has_recommend:
                 send_recommend_to_dingtalk(image_url)
             else:
                 print("无强烈推荐物品，跳过推荐群通知")
             send_image_to_dingtalk(image_url)
+        
         if os.path.exists(img):
             os.remove(img)
             print(f"已删除本地截图: {img}")
