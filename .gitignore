@@ -1,5 +1,6 @@
 # 排除包含密钥的原始脚本
 yxsr.py
+yxsr_gitee.py
 
 # 排除压缩包（不推送）
 yxsr.zip
