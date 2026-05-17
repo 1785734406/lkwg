@@ -92,57 +92,42 @@ def screenshot_merchant_hd(output_path=None):
         return None, False
 
 
-def delete_all_gitee_images(repo_owner, repo_name, access_token, branch="master", folder="images"):
-    """删除 Gitee 仓库指定文件夹下所有 merchant_hd 开头的图片"""
+def upload_to_picgo(image_path, api_key):
+    """上传图片到 PicGo Chevereto API 并返回图片链接"""
     try:
-        url = f"https://gitee.com/api/v5/repos/{repo_owner}/{repo_name}/contents/{folder}?access_token={access_token}"
-        files = requests.get(url).json()
-        image_files = [f for f in files if isinstance(f, dict) and f.get("type") == "file" and f.get("name", "").startswith("merchant_hd_") and f.get("name", "").endswith(".png")]
-
-        print(f"找到 {len(image_files)} 个 merchant_hd 图片文件，准备全部删除")
-        for f in image_files:
-            filename = f["name"]
-            sha = f.get("sha")
-            if not sha:
-                print(f"无法获取 {filename} 的 SHA，跳过")
-                continue
-            delete_url = f"https://gitee.com/api/v5/repos/{repo_owner}/{repo_name}/contents/{folder}/{filename}"
-            delete_data = {"access_token": access_token, "message": f"Delete {filename}", "sha": sha, "branch": branch}
-            resp = requests.delete(delete_url, json=delete_data)
-            print(f"删除 {filename}: {'成功' if resp.status_code == 200 else f'失败 {resp.status_code}'}")
-    except Exception as e:
-        print(f"删除 Gitee 图片时出错: {e}")
-
-
-def upload_to_gitee(image_path, repo_owner, repo_name, access_token, branch="master", folder="images"):
-    """上传图片到 Gitee 仓库并返回图片链接"""
-    try:
+        api_url = "https://www.picgo.net/api/1/upload"
+        
         with open(image_path, "rb") as f:
             image_data = f.read()
-        base_name = os.path.splitext(os.path.basename(image_path))[0]
-        ext = os.path.splitext(os.path.basename(image_path))[1]
-        filename = f"{base_name}_{int(time.time())}{ext}"
-        filepath = f"{folder}/{filename}"
-
-        api_url = f"https://gitee.com/api/v5/repos/{repo_owner}/{repo_name}/contents/{filepath}"
-        data = {"access_token": access_token, "message": f"Update {filename}", "content": base64.b64encode(image_data).decode('utf-8'), "branch": branch}
-
-        check_resp = requests.get(f"{api_url}?access_token={access_token}")
-        if check_resp.status_code == 200:
-            file_info = check_resp.json()
-            if isinstance(file_info, dict) and "sha" in file_info:
-                data["sha"] = file_info["sha"]
-                print(f"文件已存在，使用 SHA: {file_info['sha']}")
-
-        resp = requests.put(api_url, json=data) if "sha" in data else requests.post(api_url, json=data)
+        
+        files = {
+            'source': ('merchant_hd.png', image_data, 'image/png')
+        }
+        
+        data = {
+            'expiration': 'PT4H'
+        }
+        
+        headers = {
+            'X-API-Key': api_key
+        }
+        
+        resp = requests.post(api_url, files=files, data=data, headers=headers)
         resp.raise_for_status()
         result = resp.json()
-
-        download_url = result.get("content", {}).get("download_url") or result.get("download_url") or result.get("html_url")
-        if not download_url:
-            download_url = f"https://gitee.com/{repo_owner}/{repo_name}/raw/{branch}/{filepath}"
-        print(f"上传成功: {download_url}")
-        return download_url
+        
+        if result.get('status_code') == 200:
+            image_url = result.get('image', {}).get('url')
+            if image_url:
+                print(f"上传成功: {image_url}")
+                print("图片将在4小时后自动删除")
+                return image_url
+            else:
+                print("上传成功但未返回图片URL")
+                return None
+        else:
+            print(f"上传失败: {result.get('error', {}).get('message', '未知错误')}")
+            return None
     except Exception as e:
         print(f"上传失败: {e}")
         return None
@@ -221,27 +206,22 @@ def send_recommend_to_dingtalk(image_url):
 
 
 if __name__ == "__main__":
-    repo_owner = os.getenv('GITEE_OWNER')
-    repo_name = os.getenv('GITEE_REPO')
-    access_token = os.getenv('GITEE_TOKEN')
+    picgo_api_key = os.getenv('PICGO_API_KEY')
 
-    if not all([repo_owner, repo_name, access_token]):
-        print("错误：缺少必要的 Gitee 环境变量")
+    if not picgo_api_key:
+        print("错误：缺少 PICGO_API_KEY 环境变量")
         exit(1)
 
-    # 先删除之前的旧图片，避免影响当前图片
-    delete_all_gitee_images(repo_owner, repo_name, access_token)
-    
     img, has_recommend = screenshot_merchant_hd()
     if img:
-        image_url = upload_to_gitee(img, repo_owner, repo_name, access_token)
+        image_url = upload_to_picgo(img, picgo_api_key)
         if image_url:
             if has_recommend:
                 send_recommend_to_dingtalk(image_url)
             else:
                 print("无强烈推荐物品，跳过推荐群通知")
             send_image_to_dingtalk(image_url)
-        
+
         if os.path.exists(img):
             os.remove(img)
             print(f"已删除本地截图: {img}")
