@@ -79,7 +79,9 @@ def screenshot_merchant_hd(output_path=None):
                 page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
+                # 隐藏版本更新弹窗（.t-pop 或 #shop_rules）
                 page.evaluate("if (document.querySelector('.t-pop')) document.querySelector('.t-pop').style.display = 'none';")
+                page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').style.display = 'none';")
             except Exception:
                 pass
             time.sleep(10)
