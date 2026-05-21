@@ -81,7 +81,7 @@ def screenshot_merchant_hd(output_path=None):
                 pop_close_btn = page.locator(".t-btn.popClose")
                 if pop_close_btn.first.is_visible():
                     pop_close_btn.first.click()
-                    time.sleep(1)  # 等待弹窗关闭
+                    time.sleep(5)  # 等待弹窗关闭
             except Exception:
                 pass
             
