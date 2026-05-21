@@ -227,12 +227,12 @@ if __name__ == "__main__":
     if img:
         image_url = upload_to_picgo(img, picgo_api_key)
         if image_url:
-            # 先发送全物品群
+            # 发送全物品群前等待10秒
+            time.sleep(10)
             send_image_to_dingtalk(image_url)
             
             # 再发送推荐群（如果有强烈推荐物品）
             if has_recommend:
-                time.sleep(10)  # 发送推荐群通知前等待10秒
                 send_recommend_to_dingtalk(image_url)
             else:
                 print("无强烈推荐物品，跳过推荐群通知")
