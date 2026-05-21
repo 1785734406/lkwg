@@ -79,6 +79,7 @@ def screenshot_merchant_hd(output_path=None):
                 page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.t-pop')) document.querySelector('.t-pop').style.display = 'none';")
             except Exception:
                 pass
             time.sleep(10)
