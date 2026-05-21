@@ -75,14 +75,9 @@ def screenshot_merchant_hd(output_path=None):
                         break
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
-            # 隐藏版本更新弹窗（通过 ID 直接隐藏）
+            # 隐藏弹窗和工具栏
             try:
                 page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').style.display = 'none';")
-            except Exception:
-                pass
-            
-            # 隐藏底部工具栏，顶部 sw-box 工具栏
-            try:
                 page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
