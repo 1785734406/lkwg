@@ -75,13 +75,9 @@ def screenshot_merchant_hd(output_path=None):
                         break
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
-            # 关闭版本更新弹窗（点击"好的"按钮）
+            # 隐藏版本更新弹窗（通过 ID 直接隐藏）
             try:
-                # 尝试点击弹窗的"好的"按钮关闭弹窗
-                pop_close_btn = page.locator(".t-btn.popClose")
-                if pop_close_btn.first.is_visible():
-                    pop_close_btn.first.click()
-                    time.sleep(5)  # 等待弹窗关闭
+                page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').style.display = 'none';")
             except Exception:
                 pass
             
