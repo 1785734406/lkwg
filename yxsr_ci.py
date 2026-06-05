@@ -75,12 +75,12 @@ def screenshot_merchant_hd(output_path=None):
                         break
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
-            # 删除弹窗和工具栏
+            # 隐藏弹窗和工具栏（高度为0不占位）
             try:
-                page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').remove();")
-                page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').remove();")
-                page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').remove();")
-                page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').remove();")
+                page.evaluate("if (document.querySelector('#shop_rules')) { document.querySelector('#shop_rules').style.height = '0'; document.querySelector('#shop_rules').style.overflow = 'hidden'; }")
+                page.evaluate("if (document.querySelector('.tab')) { document.querySelector('.tab').style.height = '0'; document.querySelector('.tab').style.overflow = 'hidden'; }")
+                page.evaluate("if (document.querySelector('.share-bom')) { document.querySelector('.share-bom').style.height = '0'; document.querySelector('.share-bom').style.overflow = 'hidden'; }")
+                page.evaluate("if (document.querySelector('.sw-box')) { document.querySelector('.sw-box').style.height = '0'; document.querySelector('.sw-box').style.overflow = 'hidden'; }")
             except Exception:
                 pass
             time.sleep(10)
