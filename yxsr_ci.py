@@ -75,12 +75,13 @@ def screenshot_merchant_hd(output_path=None):
                         break
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
-            # 隐藏弹窗和工具栏（高度为0不占位）
+            # 隐藏弹窗和工具栏（使用 display: none 确保彻底隐藏）
             try:
-                page.evaluate("if (document.querySelector('#shop_rules')) { document.querySelector('#shop_rules').style.height = '0'; document.querySelector('#shop_rules').style.overflow = 'hidden'; }")
-                page.evaluate("if (document.querySelector('.tab')) { document.querySelector('.tab').style.height = '0'; document.querySelector('.tab').style.overflow = 'hidden'; }")
-                page.evaluate("if (document.querySelector('.share-bom')) { document.querySelector('.share-bom').style.height = '0'; document.querySelector('.share-bom').style.overflow = 'hidden'; }")
-                page.evaluate("if (document.querySelector('.sw-box')) { document.querySelector('.sw-box').style.height = '0'; document.querySelector('.sw-box').style.overflow = 'hidden'; }")
+                page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.kaAppToolBox')) document.querySelector('.kaAppToolBox').style.display = 'none';")
             except Exception:
                 pass
             time.sleep(10)
