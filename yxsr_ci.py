@@ -85,9 +85,17 @@ def screenshot_merchant_hd(output_path=None):
             except Exception:
                 pass
             time.sleep(10)
-            # 截取商品列表和时间选择部分，不包含底部工具栏
-            shop_box = page.locator(".shop-box")
-            shop_box.screenshot(path=output_path, type="png")
+            # 设置 .content 高度为实际内容高度，避免空白
+            page.evaluate("""
+                var content = document.querySelector('.content');
+                if (content) {
+                    content.style.height = 'auto';
+                    content.style.minHeight = '0';
+                }
+            """)
+            time.sleep(1)
+            content = page.locator(".content")
+            content.screenshot(path=output_path, type="png")
             browser.close()
             print(f"高清截图已保存至: {output_path}")
             return output_path, has_recommend
