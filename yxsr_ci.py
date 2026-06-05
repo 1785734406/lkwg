@@ -75,12 +75,12 @@ def screenshot_merchant_hd(output_path=None):
                         break
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
-            # 隐藏弹窗和工具栏
+            # 删除弹窗和工具栏
             try:
-                page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').style.display = 'none';")
-                page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
-                page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
-                page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
+                page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').remove();")
+                page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').remove();")
+                page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').remove();")
+                page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').remove();")
             except Exception:
                 pass
             time.sleep(10)
