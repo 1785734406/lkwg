@@ -9,6 +9,7 @@ import os
 import hmac
 import hashlib
 import urllib.parse
+from PIL import Image
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -82,10 +83,39 @@ def screenshot_merchant_hd(output_path=None):
             except Exception:
                 pass
             time.sleep(10)
-            # 只截取商品列表和时间选择部分
+            
+            # 先截取两个部分
+            shop_box_path = os.path.join(SCRIPT_DIR, "shop_box_temp.png")
+            time_box_path = os.path.join(SCRIPT_DIR, "time_box_temp.png")
+            
             shop_box = page.locator(".shop-box")
-            shop_box.screenshot(path=output_path, type="png")
+            shop_box.screenshot(path=shop_box_path, type="png")
+            
+            time_box = page.locator(".time-box")
+            time_box.screenshot(path=time_box_path, type="png")
+            
             browser.close()
+            
+            # 拼接两张图片
+            shop_img = Image.open(shop_box_path)
+            time_img = Image.open(time_box_path)
+            
+            # 计算拼接后的尺寸（宽度取较大值，高度相加）
+            width = max(shop_img.width, time_img.width)
+            height = shop_img.height + time_img.height
+            
+            # 创建新图片
+            combined_img = Image.new('RGB', (width, height))
+            combined_img.paste(shop_img, (0, 0))
+            combined_img.paste(time_img, (0, shop_img.height))
+            
+            # 保存拼接后的图片
+            combined_img.save(output_path)
+            
+            # 删除临时文件
+            os.remove(shop_box_path)
+            os.remove(time_box_path)
+            
             print(f"高清截图已保存至: {output_path}")
             return output_path, has_recommend
     except (PlaywrightTimeoutError, Exception) as e:
