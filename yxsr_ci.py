@@ -85,8 +85,9 @@ def screenshot_merchant_hd(output_path=None):
             except Exception:
                 pass
             time.sleep(10)
-            content = page.locator(".content")
-            content.screenshot(path=output_path, type="png")
+            # 截取商品列表和时间选择部分，不包含底部工具栏
+            shop_box = page.locator(".shop-box")
+            shop_box.screenshot(path=output_path, type="png")
             browser.close()
             print(f"高清截图已保存至: {output_path}")
             return output_path, has_recommend
