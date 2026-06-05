@@ -75,27 +75,16 @@ def screenshot_merchant_hd(output_path=None):
                         break
             print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
 
-            # 隐藏弹窗和工具栏（使用 display: none 确保彻底隐藏）
+            # 隐藏弹窗和顶部工具栏
             try:
                 page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').style.display = 'none';")
-                page.evaluate("if (document.querySelector('.tab')) document.querySelector('.tab').style.display = 'none';")
-                page.evaluate("if (document.querySelector('.share-bom')) document.querySelector('.share-bom').style.display = 'none';")
                 page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
-                page.evaluate("if (document.querySelector('.kaAppToolBox')) document.querySelector('.kaAppToolBox').style.display = 'none';")
             except Exception:
                 pass
             time.sleep(10)
-            # 设置 .content 高度为实际内容高度，避免空白
-            page.evaluate("""
-                var content = document.querySelector('.content');
-                if (content) {
-                    content.style.height = 'auto';
-                    content.style.minHeight = '0';
-                }
-            """)
-            time.sleep(1)
-            content = page.locator(".content")
-            content.screenshot(path=output_path, type="png")
+            # 只截取商品列表和时间选择部分
+            shop_box = page.locator(".shop-box")
+            shop_box.screenshot(path=output_path, type="png")
             browser.close()
             print(f"高清截图已保存至: {output_path}")
             return output_path, has_recommend
