@@ -15,10 +15,14 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 目标执行时间点（北京时间）
-TARGET_HOURS = [8, 12, 16, 20]
-# 时间窗口宽度（目标时间后多少小时内可以执行）
-TIME_WINDOW_HOURS = 2
+# 目标时间段（北京时间）- 每个时间段4小时
+# 8点~12点, 12点~16点, 16点~20点, 20点~24点
+TARGET_WINDOWS = [
+    (8, 12),   # 8点~12点
+    (12, 16),  # 12点~16点
+    (16, 20),  # 16点~20点
+    (20, 24)   # 20点~24点
+]
 # 执行记录文件
 EXECUTION_LOG_FILE = os.path.join(SCRIPT_DIR, "execution_log.txt")
 
@@ -26,7 +30,7 @@ EXECUTION_LOG_FILE = os.path.join(SCRIPT_DIR, "execution_log.txt")
 def should_execute():
     """
     判断当前是否应该执行截图任务
-    返回: (should_run: bool, reason: str, target_hour: int)
+    返回: (should_run: bool, reason: str, window_key: str)
     """
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
     current_hour = now.hour
@@ -34,49 +38,44 @@ def should_execute():
     
     print(f"当前北京时间: {now.strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # 检查是否在目标时间窗口内
+    # 检查是否在目标时间段内
     in_time_window = False
-    target_hour = None
-    for hour in TARGET_HOURS:
-        # 计算时间窗口：目标时间点到目标时间+TIME_WINDOW_HOURS
-        window_end = hour + TIME_WINDOW_HOURS
-        if window_end >= 24:
-            # 跨天情况
-            if (current_hour >= hour) or (current_hour < window_end - 24):
-                in_time_window = True
-                target_hour = hour
-                break
-        else:
-            if hour <= current_hour < window_end:
-                in_time_window = True
-                target_hour = hour
-                break
+    current_window = None
+    window_key = None
+    
+    for start, end in TARGET_WINDOWS:
+        window_key = f"{start}-{end}"
+        if start <= current_hour < end:
+            in_time_window = True
+            current_window = (start, end)
+            break
     
     if not in_time_window:
-        return False, f"不在有效时间窗口内（目标时间: {TARGET_HOURS}点，窗口宽度: {TIME_WINDOW_HOURS}小时）", None
+        window_list = [f"{s}-{e}" for s, e in TARGET_WINDOWS]
+        return False, f"不在有效时间段内（目标时间段: {window_list}）", None
     
     # 检查今日该时段是否已执行过
     today = now.strftime('%Y-%m-%d')
     if os.path.exists(EXECUTION_LOG_FILE):
         with open(EXECUTION_LOG_FILE, 'r') as f:
             content = f.read()
-            if f"{today}_{target_hour}" in content:
-                return False, f"今日{target_hour}点时段已执行过", target_hour
+            if f"{today}_{window_key}" in content:
+                return False, f"今日{window_key}时段已执行过", window_key
     
-    return True, f"在{target_hour}点时段窗口内，今日未执行过", target_hour
+    return True, f"在{window_key}时段内，今日未执行过", window_key
 
 
-def record_execution(target_hour):
+def record_execution(window_key):
     """
     记录执行状态
     """
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
     today = now.strftime('%Y-%m-%d')
-    record = f"{today}_{target_hour}\n"
+    record = f"{today}_{window_key}\n"
     
     with open(EXECUTION_LOG_FILE, 'a') as f:
         f.write(record)
-    print(f"已记录执行: {today} {target_hour}点时段")
+    print(f"已记录执行: {today} {window_key}时段")
 
 
 def cleanup_old_records():
