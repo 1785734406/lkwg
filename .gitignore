@@ -1,7 +1,10 @@
 # 排除包含密钥的原始脚本
 yxsr.py
 yxsr_gitee.py
-trigger_action.py
+action.py
+
+# 批处理脚本
+install_env.bat
 
 # 排除压缩包（不推送）
 yxsr.zip
