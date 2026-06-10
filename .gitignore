@@ -1,7 +1,7 @@
 # 排除包含密钥的原始脚本
 yxsr.py
 yxsr_gitee.py
-action.py
+aliyun_action.py
 
 # 批处理脚本
 install_env.bat
