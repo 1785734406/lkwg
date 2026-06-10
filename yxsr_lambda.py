@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""LiteLambda 专用脚本 - 远行商人截图推送"""
+
+import time
+import requests
+import base64
+import os
+import hmac
+import hashlib
+import urllib.parse
+from PIL import Image
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+
+# LiteLambda 使用 /tmp 目录存储临时文件
+TMP_DIR = "/tmp"
+
+
+def screenshot_merchant_hd(output_path=None):
+    """
+    高清截图远行商人页面
+    返回截图路径和是否有强烈推荐物品
+    """
+    if output_path is None:
+        output_path = os.path.join(TMP_DIR, "merchant_hd.png")
+    try:
+        url = os.getenv('LKWG_URL', "https://www.onebiji.com/hykb_tools/comm/lkwgmerchant/preview.php?id=1&immgj=0&imm=1")
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu", "--disable-dev-shm-usage"])
+            context = browser.new_context(
+                viewport={"width": 750, "height": 2000},
+                device_scale_factor=1,
+                user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
+                locale="zh-CN",
+                timezone_id="Asia/Shanghai"
+            )
+            page = context.new_page()
+            page.goto(url, timeout=150000)
+            page.wait_for_selector(".shop-box", timeout=100000)
+            page.wait_for_selector(".shop-list", timeout=80000)
+            page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
+
+            # 检测商品列表是否为空
+            has_empty_tip = page.locator(".show_none_tip").first.is_visible()
+            has_expired = page.locator(".time-un").count() > 0
+            is_empty = has_empty_tip or has_expired
+            
+            # 等待重试
+            retry_count = 0
+            max_retries = 20
+            while is_empty and retry_count < max_retries:
+                print(f"商品列表为空或有已结束商品，等待重试 ({retry_count + 1}/{max_retries})")
+                time.sleep(30)
+                page.reload()
+                page.wait_for_selector(".shop-list li", timeout=80000, state="attached")
+                has_empty_tip = page.locator(".show_none_tip").first.is_visible()
+                has_expired = page.locator(".time-un").count() > 0
+                is_empty = has_empty_tip or has_expired
+                retry_count += 1
+            
+            if is_empty:
+                print("等待超时，商品列表仍为空")
+                browser.close()
+                return None, False
+
+            # 检测是否有强烈推荐物品
+            has_recommend = False
+            items = page.locator(".shop-list li").all()
+            for item in items:
+                if item.is_visible():
+                    if item.locator(".tp2").count() > 0:
+                        has_recommend = True
+                        break
+            print(f"强烈推荐物品检测: {'有' if has_recommend else '无'}")
+
+            # 隐藏弹窗和顶部工具栏
+            try:
+                page.evaluate("if (document.querySelector('#shop_rules')) document.querySelector('#shop_rules').style.display = 'none';")
+                page.evaluate("if (document.querySelector('.sw-box')) document.querySelector('.sw-box').style.display = 'none';")
+            except Exception:
+                pass
+            time.sleep(10)
+            
+            # 先截取两个部分
+            shop_box_path = os.path.join(TMP_DIR, "shop_box_temp.png")
+            time_box_path = os.path.join(TMP_DIR, "time_box_temp.png")
+            
+            shop_box = page.locator(".shop-box")
+            shop_box.screenshot(path=shop_box_path, type="png")
+            
+            time_box = page.locator(".time-box")
+            time_box.screenshot(path=time_box_path, type="png")
+            
+            browser.close()
+            
+            # 拼接两张图片
+            shop_img = Image.open(shop_box_path)
+            time_img = Image.open(time_box_path)
+            
+            width = max(shop_img.width, time_img.width)
+            height = shop_img.height + time_img.height
+            
+            combined_img = Image.new('RGB', (width, height))
+            combined_img.paste(shop_img, (0, 0))
+            combined_img.paste(time_img, (0, shop_img.height))
+            combined_img.save(output_path)
+            
+            # 删除临时文件
+            os.remove(shop_box_path)
+            os.remove(time_box_path)
+            
+            print(f"高清截图已保存至: {output_path}")
+            return output_path, has_recommend
+    except (PlaywrightTimeoutError, Exception) as e:
+        print(f"截图失败: {e}")
+        return None, False
+
+
+def upload_to_picgo(image_path, api_key):
+    """上传图片到 PicGo Chevereto API 并返回图片链接"""
+    try:
+        api_url = "https://www.picgo.net/api/1/upload"
+        
+        with open(image_path, "rb") as f:
+            image_data = f.read()
+        
+        files = {
+            'source': ('merchant_hd.png', image_data, 'image/png')
+        }
+        
+        data = {
+            'expiration': 'PT4H'
+        }
+        
+        headers = {
+            'X-API-Key': api_key
+        }
+        
+        resp = requests.post(api_url, files=files, data=data, headers=headers)
+        resp.raise_for_status()
+        result = resp.json()
+        
+        if result.get('status_code') == 200:
+            image_url = result.get('image', {}).get('url')
+            if image_url:
+                print(f"上传成功: {image_url}")
+                return image_url
+            else:
+                print("上传成功但未返回图片URL")
+                return None
+        else:
+            print(f"上传失败: {result.get('error', {}).get('message', '未知错误')}")
+            return None
+    except Exception as e:
+        print(f"上传失败: {e}")
+        return None
+
+
+def send_image_to_dingtalk(image_url):
+    """发送图片链接到第一个钉钉群（全物品群）"""
+    try:
+        webhook = os.getenv('DINGTALK_WEBHOOK')
+        secret = os.getenv('DINGTALK_SECRET')
+
+        if not webhook or not secret:
+            print("错误：缺少 DINGTALK_WEBHOOK 或 DINGTALK_SECRET 环境变量")
+            return False
+
+        timestamp = str(int(time.time() * 1000))
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac.new(secret.encode('utf-8'), f"{timestamp}\n{secret}".encode('utf-8'), hashlib.sha256).digest()))
+        webhook_url = f"{webhook}&timestamp={timestamp}&sign={sign}"
+
+        data = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": "远行商人商品列表",
+                "text": f"远行商人商品列表定时推送中，当前商品信息：\n ![远行商人商品列表]({image_url})"
+            },
+            "at": {"isAtAll": False}
+        }
+        resp = requests.post(webhook_url, json=data, headers={"Content-Type": "application/json"})
+        resp.raise_for_status()
+        result = resp.json()
+        if result.get("errcode") == 0:
+            print("全物品群通知发送成功")
+            return True
+        else:
+            print(f"全物品群通知发送失败: {result.get('errmsg')}")
+            return False
+    except Exception as e:
+        print(f"发送过程出错: {e}")
+        return False
+
+
+def send_recommend_to_dingtalk(image_url):
+    """向第二个钉钉群发送强烈推荐物品通知（推荐群）"""
+    try:
+        webhook = os.getenv('DINGTALK2_WEBHOOK')
+        secret = os.getenv('DINGTALK2_SECRET')
+
+        if not webhook or not secret:
+            print("错误：缺少 DINGTALK2_WEBHOOK 或 DINGTALK2_SECRET 环境变量")
+            return False
+
+        timestamp = str(int(time.time() * 1000))
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac.new(secret.encode('utf-8'), f"{timestamp}\n{secret}".encode('utf-8'), hashlib.sha256).digest()))
+        webhook_url = f"{webhook}&timestamp={timestamp}&sign={sign}"
+
+        data = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": "远行商人强烈推荐",
+                "text": f"⚠️ 发现强烈推荐购买物品！\n ![远行商人商品列表]({image_url})"
+            },
+            "at": {"isAtAll": False}
+        }
+        resp = requests.post(webhook_url, json=data, headers={"Content-Type": "application/json"})
+        resp.raise_for_status()
+        result = resp.json()
+        if result.get("errcode") == 0:
+            print("推荐群通知发送成功")
+            return True
+        else:
+            print(f"推荐群通知发送失败: {result.get('errmsg')}")
+            return False
+    except Exception as e:
+        print(f"发送强烈推荐通知出错: {e}")
+        return False
+
+
+def handler(event, context):
+    """LiteLambda 入口函数"""
+    print("开始执行远行商人截图任务")
+    
+    picgo_api_key = os.getenv('PICGO_API_KEY')
+    
+    if not picgo_api_key:
+        print("错误：缺少 PICGO_API_KEY 环境变量")
+        return {"status": "error", "message": "缺少 PICGO_API_KEY 环境变量"}
+
+    img, has_recommend = screenshot_merchant_hd()
+    if img:
+        image_url = upload_to_picgo(img, picgo_api_key)
+        if image_url:
+            time.sleep(10)
+            send_image_to_dingtalk(image_url)
+            
+            if has_recommend:
+                send_recommend_to_dingtalk(image_url)
+            else:
+                print("无强烈推荐物品，跳过推荐群通知")
+
+        if os.path.exists(img):
+            os.remove(img)
+            print(f"已删除本地截图: {img}")
+        
+        return {"status": "success", "has_recommend": has_recommend, "image_url": image_url}
+    else:
+        print("截图失败，流程终止")
+        return {"status": "error", "message": "截图失败"}
+
+
+if __name__ == "__main__":
+    # 本地测试
+    result = handler(None, None)
+    print(result)
