@@ -9,10 +9,104 @@ import os
 import hmac
 import hashlib
 import urllib.parse
+import datetime
 from PIL import Image
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 目标执行时间点（北京时间）
+TARGET_HOURS = [8, 12, 16, 20]
+# 时间窗口宽度（目标时间后多少小时内可以执行）
+TIME_WINDOW_HOURS = 2
+# 执行记录文件
+EXECUTION_LOG_FILE = os.path.join(SCRIPT_DIR, "execution_log.txt")
+
+
+def should_execute():
+    """
+    判断当前是否应该执行截图任务
+    返回: (should_run: bool, reason: str, target_hour: int)
+    """
+    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+    current_hour = now.hour
+    current_minute = now.minute
+    
+    print(f"当前北京时间: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # 检查是否在目标时间窗口内
+    in_time_window = False
+    target_hour = None
+    for hour in TARGET_HOURS:
+        # 计算时间窗口：目标时间点到目标时间+TIME_WINDOW_HOURS
+        window_end = hour + TIME_WINDOW_HOURS
+        if window_end >= 24:
+            # 跨天情况
+            if (current_hour >= hour) or (current_hour < window_end - 24):
+                in_time_window = True
+                target_hour = hour
+                break
+        else:
+            if hour <= current_hour < window_end:
+                in_time_window = True
+                target_hour = hour
+                break
+    
+    if not in_time_window:
+        return False, f"不在有效时间窗口内（目标时间: {TARGET_HOURS}点，窗口宽度: {TIME_WINDOW_HOURS}小时）", None
+    
+    # 检查今日该时段是否已执行过
+    today = now.strftime('%Y-%m-%d')
+    if os.path.exists(EXECUTION_LOG_FILE):
+        with open(EXECUTION_LOG_FILE, 'r') as f:
+            content = f.read()
+            if f"{today}_{target_hour}" in content:
+                return False, f"今日{target_hour}点时段已执行过", target_hour
+    
+    return True, f"在{target_hour}点时段窗口内，今日未执行过", target_hour
+
+
+def record_execution(target_hour):
+    """
+    记录执行状态
+    """
+    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+    today = now.strftime('%Y-%m-%d')
+    record = f"{today}_{target_hour}\n"
+    
+    with open(EXECUTION_LOG_FILE, 'a') as f:
+        f.write(record)
+    print(f"已记录执行: {today} {target_hour}点时段")
+
+
+def cleanup_old_records():
+    """
+    清理3天前的执行记录
+    """
+    if not os.path.exists(EXECUTION_LOG_FILE):
+        return
+    
+    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+    cutoff_date = now - datetime.timedelta(days=3)
+    
+    with open(EXECUTION_LOG_FILE, 'r') as f:
+        lines = f.readlines()
+    
+    # 只保留3天内的记录
+    new_lines = []
+    for line in lines:
+        line = line.strip()
+        if line:
+            date_str = line.split('_')[0]
+            try:
+                record_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=datetime.timezone(datetime.timedelta(hours=8)))
+                if record_date >= cutoff_date:
+                    new_lines.append(line + '\n')
+            except:
+                pass
+    
+    with open(EXECUTION_LOG_FILE, 'w') as f:
+        f.writelines(new_lines)
 
 
 def screenshot_merchant_hd(output_path=None):
@@ -237,6 +331,17 @@ def send_recommend_to_dingtalk(image_url):
 
 
 if __name__ == "__main__":
+    # 清理旧的执行记录
+    cleanup_old_records()
+    
+    # 判断是否应该执行
+    should_run, reason, target_hour = should_execute()
+    print(f"执行判断: {reason}")
+    
+    if not should_run:
+        print("不执行截图任务，流程终止")
+        exit(0)
+    
     picgo_api_key = os.getenv('PICGO_API_KEY')
 
     if not picgo_api_key:
@@ -256,6 +361,10 @@ if __name__ == "__main__":
                 send_recommend_to_dingtalk(image_url)
             else:
                 print("无强烈推荐物品，跳过推荐群通知")
+            
+            # 记录执行状态
+            if target_hour:
+                record_execution(target_hour)
 
         if os.path.exists(img):
             os.remove(img)

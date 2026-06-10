@@ -21,6 +21,9 @@ __pycache__/
 .env.local
 .env.*.local
 
+# 执行记录文件
+execution_log.txt
+
 # IDE 配置
 .vscode/
 .idea/
