@@ -1,7 +1,7 @@
 name: Merchant Screenshot
 
 on:
-  schedule:
+  #schedule:
     # 北京时间 7、8、10、11、14、15、16、19、21点15分 (UTC 23,0,2,3,6,7,8,11,13)
     #- cron: '15 23,0,2,3,6,7,8,11,13 * * *'
   workflow_dispatch:
